@@ -59,6 +59,12 @@ cat urls.txt | analyticsrelationships
 echo https://www.example.com | analyticsrelationships
 ```
 
+4. Or for the leet users, add to your chains:
+     
+```
+cat domains.txt | httpx -silent | analyticsrelationships -silent | anew related.txt
+```
+     
 ## Options
 
 - `-url`: URL of the website to scan the Analytics code from
