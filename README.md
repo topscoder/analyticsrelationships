@@ -1,7 +1,5 @@
-<h1 align="center">
-  <b>AnalyticsRelationships</b>
-  <br>
-</h1>
+# AnalyticsRelationships
+
 <p align="center">
   <a href="https://golang.org/dl/#stable">
     <img src="https://img.shields.io/badge/go-1.16-blue.svg?style=flat-square&logo=go">
@@ -12,136 +10,64 @@
    <a href="https://www.gnu.org/licenses/gpl-3.0.en.html">
     <img src="https://img.shields.io/badge/license-GNU-green.svg?style=square&logo=gnu">
    <a href="https://twitter.com/JosueEncinar">
-    <img src="https://img.shields.io/badge/author-@JosueEncinar-orange.svg?style=square&logo=twitter">
+    <img src="https://img.shields.io/badge/author-@JosueEncinar-orange.svg?style=square&logo=twitter">&nbsp;
+    <a href="https://twitter.com/topscoder">
+    <img src="https://img.shields.io/badge/author-@topscoder-orange.svg?style=square&logo=twitter">
   </a>
 </p>
 
 
 <p align="center">
-This script try to get related domains / subdomains by looking at Google Analytics IDs from a URL. First search for ID of Google Analytics in the webpage and then request to <b>builtwith</b> and <b>hackertarget</b> with the ID.
+This script tries to get related domains and/or subdomains by looking at Google Analytics IDs from a URL. First search for ID of Google Analytics in the webpage and then request to <b>builtwith</b> and <b>hackertarget</b> with the ID.</p>
+
+<p align="center">
+<b>Note: This is a fork of the original project at github.com/Josue87/AnalyticsRelationships</b>
 </p>
-<br/>
+
 <hr/>
 
-**Note**: It does not work with all websites. It is searched by the following expressions: 
+ **Note**: It does not work with all websites. It is searched by the following expressions:
 
-```
-->  "www\.googletagmanager\.com/ns\.html\?id=[A-Z0-9\-]+"
--> GTM-[A-Z0-9]+
-->  "UA-\d+-\d+"
-```
+* `*"www\.googletagmanager\.com/ns\.html\?id=[A-Z0-9\-]+"`
+* `GTM-[A-Z0-9]+`
+* `*"UA-\d+-\d+"`
 
-## Available versions:
+## Installation
 
-* [Python](Python)
-* [GO](.)
+Install Golang, then run:
 
-## Installation:
-
-Installation according to language.
-
-### Python
-
-```
-> git clone https://github.com/Josue87/AnalyticsRelationships.git
-> cd AnalyticsRelationships/Python
-> sudo pip3 install -r requirements.txt
-```
-
-### GO
-
-```
-> git clone https://github.com/Josue87/AnalyticsRelationships.git
-> cd AnalyticsRelationships/
-> go build -ldflags "-s -w"
-```
-
-### Docker
-```
-> git clone https://github.com/Josue87/AnalyticsRelationships.git
-> cd AnalyticsRelationships
-> docker build -t analyticsrelationships:latest . 
-```
+`go install -v github.com/topscoder/analyticsrelationships@latest`
 
 ## Usage
 
-Usage according to language
+This tool can be used in different ways:
 
-### Python
-
+1. Pass a single URL using the `-url` flag:
 ```
-> python3 analyticsrelationships.py -u https://www.example.com
-```
-
-Or redirect output to a file (banner or information messages are sent to the error output):
-
-``` 
-python3 analyticsrelationships.py -u https://www.example.com > /tmp/example.txt
+analyticsrelationships -url https://www.example.com
 ```
 
-
-### GO
-
-```
->  ./analyticsrelationships --url https://www.example.com
-```
-
-Or redirect output to a file (banner or information messages are sent to the error output):
+2. You can also pass URL's as input via STDIN
 
 ```
->  ./analyticsrelationships --url https://www.example.com > /tmp/example.txt
+cat urls.txt | analyticsrelationships
 ```
 
-You can also pass a file as input
+3. Or a single URL via STDIN
 
 ```
->  cat file.txt | ./analyticsrelationships 
+echo https://www.example.com | analyticsrelationships
 ```
 
-Or a single URL
+## Options
 
-```
->  echo https://www.example.com | ./analyticsrelationships 
-```
+- `-url`: URL of the website to scan the Analytics code from
+- `-silent`: Don't print shizzle. Only what matters.
 
-### Docker
+## Contributing
 
-Only Python Version.
+Contributions are welcome! If you find a bug or want to suggest a new feature, please open an issue or submit a pull request.
 
-```
->  docker run -it  analyticsrelationships:latest https://www.example.com
-```
+## License
 
-Or redirect output to a file (banner or information messages are sent to the error output):
-
-```
->  docker run -it  analyticsrelationships:latest https://www.example.com > /tmp/example.txt
-```
-## Examples
-
-### Python
-
-Output redirection to file /tmp/example.txt:
-
-![image](https://user-images.githubusercontent.com/16885065/118681597-fdf27180-b7ff-11eb-9b4d-c6738d1bc5ff.png)
-
-Without redirection:
-
-![image](https://user-images.githubusercontent.com/16885065/118681802-28442f00-b800-11eb-8a95-8b0de24ec691.png)
-
-### GO
-
-Without redirection:
-
-![image](https://user-images.githubusercontent.com/16885065/118682807-0e571c00-b801-11eb-8da2-d9e3d3c1d555.png)
-
-Working with file redirection works just like in Python.
-
-An example with a file:
-
-![image](https://user-images.githubusercontent.com/16885065/123318287-57506d80-d52f-11eb-89d8-cf0a3f8ab4ee.png)
-
-
-# Disclaimer!
-
-This is a PoC. The author is not responsible for any illegitimate use.
+AnalyticsRelationships is released under the GNU license.

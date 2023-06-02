@@ -14,7 +14,6 @@ import (
 )
 
 const colorReset = "\033[0m"
-const colorYellow = "\033[33m"
 const colorRed = "\033[31m"
 
 func crash(message string, err error) {
@@ -22,23 +21,21 @@ func crash(message string, err error) {
 	panic(err)
 }
 
-func warning(message string) {
-	fmt.Print(string(colorYellow) + "[WARNING] " + message + string(colorReset) + "\n")
-}
-
-func info(message string) {
-	fmt.Print("[-] " + message + "\n")
+func info(message string, silent bool) {
+	if !silent {
+		fmt.Print("[-] " + message + "\n")
+	}
 }
 
 func banner() {
 	data := `
-██╗   ██╗ █████╗       ██╗██████╗                        
-██║   ██║██╔══██╗      ██║██╔══██╗                       
-██║   ██║███████║█████╗██║██║  ██║                       
-██║   ██║██╔══██║╚════╝██║██║  ██║                       
-╚██████╔╝██║  ██║      ██║██████╔╝                       
- ╚═════╝ ╚═╝  ╚═╝      ╚═╝╚═════╝                        
-                                                         
+██╗   ██╗ █████╗       ██╗██████╗
+██║   ██║██╔══██╗      ██║██╔══██╗
+██║   ██║███████║█████╗██║██║  ██║
+██║   ██║██╔══██║╚════╝██║██║  ██║
+╚██████╔╝██║  ██║      ██║██████╔╝
+ ╚═════╝ ╚═╝  ╚═╝      ╚═╝╚═════╝
+
 ██████╗  ██████╗ ███╗   ███╗ █████╗ ██╗███╗   ██╗███████╗
 ██╔══██╗██╔═══██╗████╗ ████║██╔══██╗██║████╗  ██║██╔════╝
 ██║  ██║██║   ██║██╔████╔██║███████║██║██╔██╗ ██║███████╗
@@ -47,67 +44,98 @@ func banner() {
 ╚═════╝  ╚═════╝ ╚═╝     ╚═╝╚═╝  ╚═╝╚═╝╚═╝  ╚═══╝╚══════╝
 
 `
-	data += "\033[32m> \033[0mGet related domains / subdomains by looking at Google Analytics IDs\n"
-	data += "\033[32m> \033[0mGO Version\n"
-	data += "\033[32m> \033[0mBy @JosueEncinar\n"
+	data += "\033[32m> \033[0mGet related (sub)domains by looking at Google Analytics IDs\n"
+	data += "\033[32m> \033[0mBy @JosueEncinar, @topscoder\n"
 
 	println(data)
 }
 
-func getURLResponse(url string) string {
+type UaIdentifier struct {
+	UaCode       string
+	OriginDomain string
+}
+
+// getURLResponse fetches the response body of a given URL.
+func getURLResponse(url string) (string, error) {
 	tr := &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 	}
+
 	client := &http.Client{
 		Transport: tr,
 		Timeout:   time.Second * 3}
 	res, err := client.Get(url)
+
 	if err != nil {
-		return ""
+		return "", err
 	}
+
 	defer res.Body.Close()
 	body, err := ioutil.ReadAll(res.Body)
 	if err != nil {
-		return ""
+		return "", err
 	}
-	return string(body)
+
+	return string(body), nil
 }
 
-func getGoogleTagManager(targetURL string) (bool, []string) {
-	var resultTagManager []string
-	response := getURLResponse(targetURL)
-	if response != "" {
-		pattern := regexp.MustCompile(`www\.googletagmanager\.com/ns\.html\?id=[A-Z0-9\-]+`)
-		data := pattern.FindStringSubmatch(response)
+// extractGoogleTagManager extracts the Google Tag Manager URL or UA from the given URL.
+func extractGoogleTagManager(targetURL string) (bool, []UaIdentifier) {
+	var resultTagManager []UaIdentifier
+	response, err := getURLResponse(targetURL)
+	if err != nil {
+		return false, resultTagManager
+	}
+
+	pattern := regexp.MustCompile(`www\.googletagmanager\.com/ns\.html\?id=[A-Z0-9\-]+`)
+	data := pattern.FindStringSubmatch(response)
+	if len(data) > 0 {
+		resultTagManager = append(
+			resultTagManager,
+			UaIdentifier{
+				UaCode:       "https://" + strings.Replace(data[0], "ns.html", "gtm.js", -1),
+				OriginDomain: targetURL,
+			},
+		)
+	} else {
+		pattern = regexp.MustCompile("GTM-[A-Z0-9]+")
+		data = pattern.FindStringSubmatch(response)
 		if len(data) > 0 {
-			resultTagManager = append(resultTagManager, "https://"+strings.Replace(data[0], "ns.html", "gtm.js", -1))
+			resultTagManager = append(
+				resultTagManager,
+				UaIdentifier{
+					UaCode:       "https://www.googletagmanager.com/gtm.js?id=" + data[0],
+					OriginDomain: targetURL,
+				},
+			)
 		} else {
-			pattern = regexp.MustCompile("GTM-[A-Z0-9]+")
-			data = pattern.FindStringSubmatch(response)
-			if len(data) > 0 {
-				resultTagManager = append(resultTagManager, "https://www.googletagmanager.com/gtm.js?id="+data[0])
-			} else {
-				pattern = regexp.MustCompile(`UA-\d+-\d+`)
-				aux := pattern.FindAllStringSubmatch(response, -1)
-				var result []string
-				for _, r := range aux {
-					result = append(result, r[0])
-				}
-				return true, result
+			pattern = regexp.MustCompile(`UA-\d+-\d+`)
+			aux := pattern.FindAllStringSubmatch(response, -1)
+			var result []UaIdentifier
+			for _, r := range aux {
+				result = append(
+					result,
+					UaIdentifier{
+						UaCode:       r[0],
+						OriginDomain: targetURL,
+					},
+				)
 			}
+			return true, result
 		}
 	}
+
 	return false, resultTagManager
 }
 
-func getUA(url string) []string {
+func getUA(urlGoogleTagManager string, urlOrigin string) []UaIdentifier {
 	pattern := regexp.MustCompile("UA-[0-9]+-[0-9]+")
-	response := getURLResponse(url)
-	var result []string
+	response, _ := getURLResponse(urlGoogleTagManager)
+	var result []UaIdentifier
 	if response != "" {
 		aux := pattern.FindAllStringSubmatch(response, -1)
 		for _, r := range aux {
-			result = append(result, r[0])
+			result = append(result, UaIdentifier{UaCode: r[0], OriginDomain: urlOrigin})
 		}
 	} else {
 		result = nil
@@ -126,7 +154,7 @@ func cleanRelationShips(domains [][]string) []string {
 func getDomainsFromBuiltWith(id string) []string {
 	pattern := regexp.MustCompile(`/relationships/[a-z0-9\-\_\.]+\.[a-z]+`)
 	url := "https://builtwith.com/relationships/tag/" + id
-	response := getURLResponse(url)
+	response, _ := getURLResponse(url)
 	var allDomains []string = nil
 	if response != "" {
 		allDomains = cleanRelationShips(pattern.FindAllStringSubmatch(response, -1))
@@ -136,7 +164,7 @@ func getDomainsFromBuiltWith(id string) []string {
 
 func getDomainsFromHackerTarget(id string) []string {
 	url := "https://api.hackertarget.com/analyticslookup/?q=" + id
-	response := getURLResponse(url)
+	response, _ := getURLResponse(url)
 	var allDomains []string = nil
 	if response != "" && !strings.Contains(response, "API count exceeded") {
 		allDomains = strings.Split(response, "\n")
@@ -168,119 +196,86 @@ func contains(data []string, value string) bool {
 
 func showDomains(ua string, chainMode bool) {
 	allDomains := getDomains(ua)
-	if !chainMode {
-		fmt.Println(">> " + ua)
-		if len(allDomains) == 0 {
-			fmt.Println("|__ NOT FOUND")
-		}
-		for _, domain := range allDomains {
-			fmt.Println("|__ " + domain)
-		}
-		fmt.Println("")
-	} else {
-		if len(allDomains) == 0 {
-			warning("NOT FOUND")
-		}
-		for _, domain := range allDomains {
-			if domain == "error getting results" {
-				var err error
-				crash("Server-side error on builtwith.com: error getting results", err)
-			}
-			fmt.Println(domain)
-		}
+	if len(allDomains) == 0 {
+		// fmt.Println("No domains found for ua " + ua)
+		return
 	}
 
+	for _, domain := range allDomains {
+		if domain == "error getting results" {
+			// crash("Server-side error on builtwith.com: error getting results", nil)
+			continue
+		}
+
+		fmt.Println(domain + "," + ua)
+	}
 }
 
-func start(url string, chainMode bool) {
+func start(url string, silent bool) {
 	if !strings.HasPrefix(url, "http") {
 		url = "https://" + url
 	}
-	if !chainMode {
-		info("Analyzing url: " + url)
-	}
-	uaResult, resultTagManager := getGoogleTagManager(url)
+
+	info("Analyzing url: "+url, silent)
+
+	isUaResult, resultTagManager := extractGoogleTagManager(url)
+
 	if len(resultTagManager) > 0 {
-		var visited = []string{}
-		var allUAs []string
-		if !uaResult {
+		var visited []string
+		var allUAs []UaIdentifier
+
+		if !isUaResult {
 			urlGoogleTagManager := resultTagManager[0]
-			if !chainMode {
-				info("URL with UA: " + urlGoogleTagManager)
-			}
-			allUAs = getUA(urlGoogleTagManager)
+
+			info("URL with UA: "+urlGoogleTagManager.UaCode, silent)
+
+			allUAs = getUA(urlGoogleTagManager.UaCode, url)
 		} else {
-			if !chainMode {
-				info("Found UA directly")
-			}
+			info("Found UA directly", silent)
+
 			allUAs = resultTagManager
 		}
-		if !chainMode {
-			info("Obtaining information from builtwith and hackertarget\n")
-		}
-		for _, ua := range allUAs {
-			baseUA := strings.Join(strings.Split(ua, "-")[0:2], "-")
+
+		info("Obtaining information from builtwith and hackertarget\n", silent)
+
+		for _, uaIdentifier := range allUAs {
+			baseUA := strings.Join(strings.Split(uaIdentifier.UaCode, "-")[0:2], "-")
+
 			if !contains(visited, baseUA) {
 				visited = append(visited, baseUA)
-				showDomains(baseUA, chainMode)
+				showDomains(baseUA, silent)
 			}
 		}
-		if !chainMode {
-			info("Done!")
-		}
+
 	} else {
-		warning("Tagmanager URL not found")
-		//Now, the program exits
+		info("Tagmanager URL not found", silent)
 	}
 }
 
-//needs to be a global variable
-var chainMode bool
-
 func main() {
-	var url string
-
-	flag.StringVar(&url, "u", "", "URL to extract Google Analytics ID")
-	flag.StringVar(&url, "url", "", "URL to extract Google Analytics ID")
-	flag.BoolVar(&chainMode, "ch", false, "In \"chain-mode\" we only output the important information. No decorations.")
-	flag.BoolVar(&chainMode, "chain-mode", false, "In \"chain-mode\" we only output the important information. No decorations.")
-
-	const usage = `Usage: ./analyticsrelationships -u URL [--chain-mode]
-  -u, --url string
-      URL to extract Google Analytics ID
-  -ch, --chain-mode
-      In "chain-mode" we only output the important information. No decorations.
-      Default: false
-`
-
-	//https://www.antoniojgutierrez.com/posts/2021-05-14-short-and-long-options-in-go-flags-pkg/
-	flag.Usage = func() { fmt.Print(usage) }
-	//parse CLI arguments
+	url := flag.String("url", "", "URL to extract Google Analytics ID from.")
+	silent := flag.Bool("silent", false, "Don't print shizzle. Only what matters.")
 	flag.Parse()
-	if !chainMode {
-		//display banner
+
+	if !*silent {
 		banner()
 	}
-	if url != "" {
-		//start main processing
-		start(url, chainMode)
-	} else {
-		//read from standard input (stdin)
 
+	if *url != "" {
+		start(*url, *silent)
+	} else {
 		stat, _ := os.Stdin.Stat()
+
 		if (stat.Mode() & os.ModeCharDevice) == 0 {
-			//data is being piped to stdin
-			//read stdin
 			scanner := bufio.NewScanner(os.Stdin)
+
 			for scanner.Scan() {
 				if err := scanner.Err(); err != nil {
 					crash("bufio couldn't read stdin correctly.", err)
 				} else {
-					start(scanner.Text(), chainMode)
+					start(scanner.Text(), *silent)
 				}
 			}
-
-		} //else { //stdin is from a terminal }
-
+		}
 	}
 }

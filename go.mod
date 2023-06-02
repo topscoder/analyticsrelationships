@@ -1,3 +1,3 @@
-module github.com/Josue87/analyticsrelationships
+module github.com/topscoder/analyticsrelationships
 
 go 1.17
