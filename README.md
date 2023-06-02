@@ -28,9 +28,9 @@ This script tries to get related domains and/or subdomains by looking at Google 
 
  **Note**: It does not work with all websites. It is searched by the following expressions:
 
-* `*"www\.googletagmanager\.com/ns\.html\?id=[A-Z0-9\-]+"`
+* `"www\.googletagmanager\.com/ns\.html\?id=[A-Z0-9\-]+"`
 * `GTM-[A-Z0-9]+`
-* `*"UA-\d+-\d+"`
+* `"UA-\d+-\d+"`
 
 ## Installation
 
