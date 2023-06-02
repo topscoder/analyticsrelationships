@@ -70,4 +70,4 @@ Contributions are welcome! If you find a bug or want to suggest a new feature, p
 
 ## License
 
-AnalyticsRelationships is released under the GNU license.
+AnalyticsRelationships is released under the [GNU license](./LICENSE)
